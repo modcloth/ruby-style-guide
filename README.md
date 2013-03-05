@@ -184,21 +184,12 @@ Translations of the guide are available in the following languages:
     end
     ```
 
-* Align the parameters of a method call if they span more than one line.
+* Indent the parameters of a method call if they span more than one line.
 
     ```Ruby
     # starting point (line is too long)
     def send_mail(source)
       Mailer.deliver(to: 'bob@example.com', from: 'us@example.com', subject: 'Important message', body: source.text)
-    end
-
-    # bad (normal indent)
-    def send_mail(source)
-      Mailer.deliver(
-        to: 'bob@example.com',
-        from: 'us@example.com',
-        subject: 'Important message',
-        body: source.text)
     end
 
     # bad (double indent)
@@ -210,12 +201,21 @@ Translations of the guide are available in the following languages:
           body: source.text)
     end
 
-    # good
+    # bad (align)
     def send_mail(source)
       Mailer.deliver(to: 'bob@example.com',
                      from: 'us@example.com',
                      subject: 'Important message',
                      body: source.text)
+    end
+
+    # good (normal indent)
+    def send_mail(source)
+      Mailer.deliver(
+        to: 'bob@example.com',
+        from: 'us@example.com',
+        subject: 'Important message',
+        body: source.text)
     end
     ```
 
@@ -231,7 +231,8 @@ Translations of the guide are available in the following languages:
 
 * Use RDoc and its conventions for API documentation.  Don't put an
   empty line between the comment block and the `def`.
-* Limit lines to 80 characters.
+* Avoid lines longer than 80 characters when possible (and absolutely
+  limit them to 120 characters).
 * Avoid trailing whitespace.
 
 ## Syntax
@@ -456,35 +457,23 @@ Translations of the guide are available in the following languages:
     array.delete(e)
     ```
 
-* Prefer `{...}` over `do...end` for single-line blocks.  Avoid using
-  `{...}` for multi-line blocks (multiline chaining is always
-  ugly). Always use `do...end` for "control flow" and "method
-  definitions" (e.g. in Rakefiles and certain DSLs).  Avoid `do...end`
-  when chaining.
+* Use { } for blocks that return values, use do / end for blocks that
+  are executed for side effects This has the advantage of using the choice
+  of block delimiter to convey a little extra information. Here’s some
+  examples.
 
     ```Ruby
-    names = ['Bozhidar', 'Steve', 'Sarah']
+    # block used only for side effect
+    list.each do |item| puts item end
 
-    # good
-    names.each { |name| puts name }
+    # Block used to return test value
+    list.find { |item| item > 10 }
 
-    # bad
-    names.each do |name|
-      puts name
-    end
-
-    # good
-    names.select { |name| name.start_with?('S') }.map { |name| name.upcase }
-
-    # bad
-    names.select do |name|
-      name.start_with?('S')
-    end.map { |name| name.upcase }
+    # Block value used to build new value
+    list.collect { |item| "-r" + item  }
     ```
 
-    Some will argue that multiline chaining would look OK with the use of {...}, but they should
-    ask themselves - is this code really readable and can the blocks' contents be extracted into
-    nifty methods?
+  Of course, if precedenence makes a difference, use the type of block that makes sense. This is just a guideline after all.
 
 * Avoid `return` where not required for flow of control.
 
@@ -642,18 +631,6 @@ would happen if the current value happened to be `false`.)
 * Always run the Ruby interpreter with the `-w` option so it will warn
 you if you forget either of the rules above!
 
-* Use the new lambda literal syntax.
-
-    ```Ruby
-    # bad
-    lambda = lambda { |a, b| a + b }
-    lambda.call(1, 2)
-
-    # good
-    lambda = ->(a, b) { a + b }
-    lambda.(1, 2)
-    ```
-
 * Use `_` for unused block parameters.
 
     ```Ruby
@@ -803,27 +780,6 @@ you if you forget either of the rules above!
     def +(other)
       # body omitted
     end
-    ```
-
-* Prefer `map` over `collect`, `find` over `detect`, `select` over
-  `find_all`, `reduce` over `inject` and `size` over `length`. This is
-  not a hard requirement; if the use of the alias enhances
-  readability, it's ok to use it. The rhyming methods are inherited from
-  Smalltalk and are not common in other programming languages. The
-  reason the use of `select` is encouraged over `find_all` is that it
-  goes together nicely with `reject` and its name is pretty self-explanatory.
-
-* Use `flat_map` instead of `map` + `flatten`.
-  This does not apply for arrays with a depth greater than 2, i.e.
-  if `users.first.songs == ['a', ['b','c']]`, then use `map + flatten` rather than `flat_map`.
-  `flat_map` flattens the array by 1, whereas `flatten` flattens it all the way.
-
-    ```Ruby
-    # bad
-    all_songs = users.map(&:songs).flatten.uniq
-
-    # good
-    all_songs = users.flat_map(&:songs).uniq
     ```
 
 ## Comments
@@ -1140,18 +1096,34 @@ in *Ruby* now, not in *Python*.
 
 ## Exceptions
 
-* Signal exceptions using the `fail` method. Use `raise` only when
+* Signal generic RuntimeError using the `fail` method. Use `raise` when
   catching an exception and re-raising it (because here you're not
   failing, but explicitly and purposefully raising an exception).
+  Use `raise` when specific error class is specified.
 
     ```Ruby
     begin
-      fail 'Oops';
+      fail 'Oops'
+    rescue => error
+      raise if error.message != 'Oops'
+    end
+
+    begin
+      raise CustomError, 'Oops'
     rescue => error
       raise if error.message != 'Oops'
     end
     ```
 
+* do not create new instance of exception when raising it
+
+    ```Ruby
+    # bad
+    raise CustomError.new('Oops')
+
+    # good
+    raise CustomError, 'Oops'
+    ```
 * Never return from an `ensure` block. If you explicitly return from a
   method inside an `ensure` block, the return will take precedence over
   any exception being raised, and the method will return as if no
@@ -1396,6 +1368,9 @@ strings.
 
     # good - fetch raises a KeyError making the problem obvious
     heroes.fetch(:supermann)
+
+    # still good - raising error explicitly
+    heroes[:supermann] or fail "Missing supermann"
     ```
 
 * Rely on the fact that as of Ruby 1.9 hashes are ordered.
@@ -1649,9 +1624,9 @@ strings.
 ## Misc
 
 * Write `ruby -w` safe code.
-* Avoid hashes as optional parameters. Does the method do too much?
 * Avoid methods longer than 10 LOC (lines of code). Ideally, most methods will be shorter than
   5 LOC. Empty lines do not contribute to the relevant LOC.
+* Avoid classes longer than 300 LOC. Ideally, restrict them to 100 LOC.
 * Avoid parameter lists longer than three or four parameters.
 * If you really need "global" methods, add them to Kernel
   and make them private.
