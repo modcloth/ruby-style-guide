@@ -309,16 +309,20 @@ Translations of the guide are available in the following languages:
              - 2
     ```
 
-* When continuing a chained method invocation on another line keep the `.` on the second line.
+* When continuing a chained method invocation on another line keep the `.` on the first line.
 
     ```Ruby
-    # bad - need to consult first line to understand second line
-    one.two.three.
-      four
-
-    # good - it's immediately clear what's going on the second line
-    one.two.three
+    # bad
+    one
+      .two
+      .three
       .four
+
+    # good
+    one.
+      two.
+      three.
+      four
     ```
 
 * Align the parameters of a method call if they span more than one
